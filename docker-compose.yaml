@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    container_name: mongodb_container
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker/db/mongo:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "jeral"
+      MONGO_INITDB_ROOT_PASSWORD: "1234"
+      MONGO_INITDB_DATABASE: url_redirect_db
+  mongo_express:
+    container_name: mongo_express_container
+    image: mongo-express:latest
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: "jeral"
+      ME_CONFIG_MONGODB_ADMINPASSWORD: "1234"
+      ME_CONFIG_MONGODB_SERVER: "mongodb"
+      ME_CONFIG_MONGODB_AUTH_DATABASE: "admin"
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+    volumes:
+      - ./docker/ms/mongo-express:/config
+    depends_on:
+      - mongodb
+  redirection_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: redirection_service_container
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://jeral:1234@mongodb:27017/url_redirect_db?authSource=admin
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
