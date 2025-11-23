@@ -35,17 +35,35 @@ export const redirectToLongUrlController: RequestHandler = async (req, res) => {
         );
     }
 
-    url.clicks += 1;
-    await url.save();
+    // Atomic increment
+    const updatedUrl = await UrlModel.findOneAndUpdate(
+      { _id: url._id },
+      { $inc: { clicks: 1 } },
+      { new: true }
+    );
+
+    if (!updatedUrl) {
+      return res
+        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        .json(
+          new ErrorResponse(
+            HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            "Failed to update clicks",
+            "URL not found during update"
+          )
+        );
+    }
 
     logger.info("Redirecting to long URL");
-    return res.status(HTTP_STATUS.ACCEPTED).json(
-      new SuccessResponse(
-        HTTP_STATUS.ACCEPTED,
-        "Redirect url query was success",
-        { long_url: url.long_url }
-      )
-    );
+    return res
+      .status(HTTP_STATUS.ACCEPTED)
+      .json(
+        new SuccessResponse(
+          HTTP_STATUS.ACCEPTED,
+          "Redirect url query was success",
+          { long_url: updatedUrl.long_url }
+        )
+      );
   } catch (error: any) {
     logger.error(error.message);
     console.log(error.message);
